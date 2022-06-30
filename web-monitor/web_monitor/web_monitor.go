@@ -50,6 +50,7 @@ type MonitorServer struct {
     version     string       // version of daemon server
     startAt     string       // start time of daemon server
     webHandlers *WebHandlers // table of web handlers
+    srv         *http.Server
 }
 
 // NewMonitorServer creates new MonitorServer
@@ -366,11 +367,21 @@ func (srv *MonitorServer) Start() {
 func (srv *MonitorServer) Serve(l net.Listener) error {
     log.Logger.Info("Embeded web server start at port[%d]", srv.port)
 
-    http.HandleFunc("/", srv.webHandler)
+    sm := http.NewServeMux()
+    sm.HandleFunc("/", srv.webHandler)
 
-    //portStr := fmt.Sprintf(":%d", srv.port)
-    //return http.ListenAndServe(portStr, nil)
-    return http.Serve(l, nil)
+    srv.srv = &http.Server{
+        Handler: sm,
+    }
+    return srv.srv.Serve(l)
+}
+
+func (srv *MonitorServer) Stop() error {
+    if srv.srv != nil {
+        return srv.srv.Close()
+    }
+
+    return nil
 }
 
 // ListenAndServe start embeded web server
